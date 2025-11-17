@@ -257,10 +257,49 @@ find_package(Doxygen)
 find_package(BoostCertify REQUIRED)
 
 if (CHATTERINO_PLUGINS)
-    set(LUA_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/lib/lua/src")
-    add_subdirectory(lib/lua)
 
     find_package(Sol2 REQUIRED)
+    find_package(Lua 5.4)
+
+    if (NOT Lua_FOUND)
+        set(LUA_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/lib/lua/src")
+        add_subdirectory(lib/lua)
+    else()
+        # When Lua is found via find_package, use its include directories
+        if (Lua_INCLUDE_DIRS)
+            set(LUA_INCLUDE_DIRS "${Lua_INCLUDE_DIRS}")
+        elseif (Lua_INCLUDE_DIR)
+            set(LUA_INCLUDE_DIRS "${Lua_INCLUDE_DIR}")
+        else()
+            # If include directories aren't provided, fall back to building from source
+            message(WARNING "Lua found but include directories not available, building from source")
+            set(LUA_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/lib/lua/src")
+            add_subdirectory(lib/lua)
+        endif()
+        # If we didn't build from source and find_package didn't create a target, create an imported target
+        if (NOT TARGET lua AND LUA_INCLUDE_DIRS)
+            if (Lua_LIBRARIES)
+                add_library(lua UNKNOWN IMPORTED)
+                set_target_properties(lua PROPERTIES
+                    IMPORTED_LOCATION "${Lua_LIBRARIES}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIRS}"
+                )
+            else()
+                # No library found either, build from source
+                message(WARNING "Lua found but library not available, building from source")
+                set(LUA_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/lib/lua/src")
+                add_subdirectory(lib/lua)
+            endif()
+        elseif (TARGET lua AND LUA_INCLUDE_DIRS)
+            # Ensure include directories are set on existing target
+            get_target_property(lua_inc_dirs lua INTERFACE_INCLUDE_DIRECTORIES)
+            if (NOT lua_inc_dirs)
+                set_target_properties(lua PROPERTIES
+                    INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIRS}"
+                )
+            endif()
+        endif()
+    endif()
 endif()
 
 if (BUILD_WITH_CRASHPAD)

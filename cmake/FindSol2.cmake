@@ -11,7 +11,7 @@ if (Sol2_FOUND)
     )
     target_compile_definitions(Sol2 INTERFACE 
         SOL_ALL_SAFETIES_ON=1
-        SOL_USING_CXX_LUA=1
+        SOL_USING_CXX_LUA=0
         SOL_NO_NIL=0
     )
     target_link_libraries(Sol2 INTERFACE lua)
